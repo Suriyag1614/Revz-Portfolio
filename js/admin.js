@@ -22,9 +22,9 @@ const linkFieldContainer = document.getElementById('linkFieldContainer');
 const projLink = document.getElementById('projLink');
 
 // State
-let selectedImageFile = null; 
+let selectedImageFile = null;
 let base64ImageString = ""; // Used if we edit and don't change the image, we keep the old URL
-let editingProjectId = null; 
+let editingProjectId = null;
 let currentProjectOldImage = null; // To know if we need to delete old image from storage
 
 // --- Authentication ---
@@ -55,7 +55,7 @@ if (loginBtn) {
 
         loginBtn.disabled = true;
         loginBtn.innerHTML = 'Logging in...';
-        
+
         try {
             const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email,
@@ -172,7 +172,7 @@ function handleImageFile(file) {
 
 if (removePreviewBtn) {
     removePreviewBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); 
+        e.stopPropagation();
         e.preventDefault();
         projImage.value = "";
         selectedImageFile = null;
@@ -190,7 +190,7 @@ function resetProjectForm() {
     imagePreview.src = "";
     imagePreviewContainer.classList.add('admin__preview-hidden');
     if (linkFieldContainer) linkFieldContainer.classList.add('admin__view-hidden');
-    
+
     editingProjectId = null;
     currentProjectOldImage = null;
     if (projImage) projImage.required = false;
@@ -224,7 +224,7 @@ if (addProjectForm) {
             return;
         }
 
-        let imageUrl = base64ImageString || currentProjectOldImage; 
+        let imageUrl = base64ImageString || currentProjectOldImage;
 
         // Generate automatic screenshot for Web/App if no image was provided
         if (!selectedImageFile && !base64ImageString && !currentProjectOldImage && (category === 'web' || category === 'app')) {
@@ -233,7 +233,7 @@ if (addProjectForm) {
                 imageUrl = `https://s0.wp.com/mshots/v1/${encodeURIComponent(link)}?w=1200`;
             } else {
                 // Fallback image if no link and no image is uploaded
-                imageUrl = 'assets/img/work-1.webp'; 
+                imageUrl = 'assets/img/dumrev.png';
             }
         }
 
@@ -253,7 +253,7 @@ if (addProjectForm) {
                 const { data: publicUrlData } = supabaseClient.storage
                     .from('portfolio-images')
                     .getPublicUrl(filePath);
-                
+
                 imageUrl = publicUrlData.publicUrl;
 
                 // Delete old image if we are replacing it
@@ -325,7 +325,7 @@ async function renderAdminProjects() {
         adminProjectsList.innerHTML = '<p class="admin__no-projects">Failed to load projects.</p>';
         return;
     }
-    
+
     if (!customProjects || customProjects.length === 0) {
         adminProjectsList.innerHTML = '<p class="admin__no-projects">No projects added yet.</p>';
         return;
@@ -353,7 +353,7 @@ async function renderAdminProjects() {
             </div>
         `;
     });
-    
+
     adminProjectsList.innerHTML = html;
 
     document.querySelectorAll('.admin__action-btn.edit-btn').forEach(btn => {
@@ -373,7 +373,7 @@ async function renderAdminProjects() {
 }
 
 async function deleteProject(id, imgUrl) {
-    if(confirm('Are you sure you want to delete this project?')) {
+    if (confirm('Are you sure you want to delete this project?')) {
         try {
             // Delete from Database
             const { error: dbError } = await supabaseClient.from('projects').delete().eq('id', id);
@@ -386,7 +386,7 @@ async function deleteProject(id, imgUrl) {
             }
 
             renderAdminProjects();
-        } catch(err) {
+        } catch (err) {
             console.error("Failed to delete project:", err);
             alert("Error deleting project.");
         }
@@ -395,19 +395,19 @@ async function deleteProject(id, imgUrl) {
 
 async function editProject(id) {
     const { data: project, error } = await supabaseClient.from('projects').select('*').eq('id', id).single();
-    
+
     if (error || !project) {
         alert("Could not load project for editing");
         return;
     }
-    
+
     editingProjectId = project.id;
     currentProjectOldImage = project.image;
-    
+
     document.getElementById('projName').value = project.name;
     document.getElementById('projDesign').value = project.category;
     document.getElementById('projDesc').value = project.description;
-    
+
     if (project.category === 'web' || project.category === 'app') {
         linkFieldContainer.classList.remove('admin__view-hidden');
         if (project.link) {
@@ -416,18 +416,18 @@ async function editProject(id) {
     } else {
         linkFieldContainer.classList.add('admin__view-hidden');
     }
-    
+
     base64ImageString = project.image;
     imagePreview.src = base64ImageString;
     imagePreviewContainer.classList.remove('admin__preview-hidden');
-    projImage.required = false; 
-    
+    projImage.required = false;
+
     const formTitle = document.querySelector('#adminFormView .admin__box-title');
     if (formTitle) formTitle.innerText = "Edit Project";
-    
+
     const submitBtn = document.querySelector('#addProjectForm button[type="submit"]');
     if (submitBtn) submitBtn.innerHTML = 'Save Changes';
-    
+
     adminMainView.classList.add('admin__view-hidden');
     adminFormView.classList.remove('admin__view-hidden');
 }
