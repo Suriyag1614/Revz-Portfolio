@@ -74,9 +74,6 @@
                 </div>
                 <h3 class="admin__box-title">Add Project</h3>
                 <p class="admin__box-desc">Create and showcase a new project in your portfolio list.</p>
-                <button type="button" class="admin__btn-add">
-                    <i class="uil uil-plus"></i> Get Started
-                </button>
             </div>
 
             <div class="admin__manage-section">
@@ -123,8 +120,9 @@
                     <div class="admin__dropzone" id="imageDropzone">
                         <i class="uil uil-image-upload admin__dropzone-icon"></i>
                         <p class="admin__dropzone-text">Drag & drop your image here, or <span>browse</span></p>
-                        <p class="admin__dropzone-sub">Supports PNG, JPG, JPEG, WEBP (Max 5MB)</p>
-                        <input type="file" id="projImage" class="admin__file-input" accept="image/*" required>
+                        <p class="admin__dropzone-sub">Supports PNG, JPG, JPEG, WEBP (Max 5MB)<br>
+                        <em>Note: For Web/App, if no image is provided, a live screenshot of the Project Link will be automatically generated! Graphic Design projects must upload an image.</em></p>
+                        <input type="file" id="projImage" class="admin__file-input" accept="image/*">
                         
                         <div class="admin__dropzone-preview admin__preview-hidden" id="imagePreviewContainer">
                             <img src="" alt="Preview" class="admin__image-preview" id="imagePreview">

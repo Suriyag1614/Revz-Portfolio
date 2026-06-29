@@ -44,7 +44,7 @@
 
     /*===== Z Index =====*/
     --z-fixed: 10;
-    --z-modal: 100;
+    --z-modal: 10000;
 }
 
 /* Responsive Typography */
@@ -240,6 +240,7 @@ section {
     left: 0;
     right: 0;
     text-align: center;
+    cursor: pointer;
     transition: .4s;
 }
 
@@ -681,6 +682,7 @@ section {
     background-color: var(--box-color);
     padding: 1.25rem;
     border-radius: .5rem;
+    cursor: pointer;
 }
 
 .portfolio__item-details {
@@ -814,7 +816,7 @@ section {
 
 /*===== Services Section =====*/
 .services__container {
-    grid-template-columns: repeat(3, 250px);
+    grid-template-columns: repeat(2, 250px);
     justify-content: center;
     column-gap: 1.8rem;
 }
@@ -876,8 +878,8 @@ section {
 
 
 .services__modal-content {
-    width: 800px;
-    height: 800px;
+    width: 500px;
+    height: auto;
     position: relative;
     background-color: var(--box-color);
     padding: 4.5rem 2.5rem 2.5rem;
@@ -1410,7 +1412,7 @@ textarea.input {
     }
 
     .services__container {
-        grid-template-columns: repeat(3, 220px);
+        grid-template-columns: repeat(2, 250px);
     }
 
     .testimonial__card {
@@ -1432,6 +1434,11 @@ textarea.input {
 
 /* For Medium Devices */
 @media screen and (max-width: 768px) {
+    .swiper-button-next,
+    .swiper-button-prev {
+        display: none !important;
+    }
+
     .about__img {
         width: 250px;
     }
@@ -1490,7 +1497,8 @@ textarea.input {
 
     .portfolio__popup-inner {
         padding: 2.8rem 1.5rem 2.5rem;
-        width: 420px;
+        width: 90%;
+        max-width: 420px;
     }
 
     .portfolio__popup-content {
@@ -2194,4 +2202,73 @@ textarea.input {
 #projectsModal .swiper-button-next:hover {
     background-color: rgba(52, 130, 255, 0.15);
     color: var(--skin-color);
+}
+
+/*=============== DESKTOP TOP NAV BAR OVERRIDE ===============*/
+@media screen and (min-width: 1025px) {
+    .sidebar {
+        width: 100%;
+        height: 80px;
+        border-right: none;
+        border-bottom: 1px solid var(--box-color);
+        top: 0;
+        left: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        background-color: var(--body-color);
+    }
+    
+    .nav {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 4rem;
+    }
+    
+    .nav__logo {
+        position: static;
+        margin: 0;
+    }
+    
+    .nav__menu {
+        position: static;
+        transform: none;
+        width: auto;
+    }
+    
+    .menu {
+        display: block;
+    }
+    
+    .nav__list {
+        flex-direction: row;
+        column-gap: 3rem;
+    }
+    
+    .nav__link {
+        float: none;
+        line-height: normal;
+        height: auto;
+        padding: 0;
+    }
+    
+    .nav__link.active-link::after,
+    .nav__link:hover::after {
+        bottom: -0.5rem;
+    }
+    
+    .btn__share {
+        position: static;
+    }
+    
+    .main {
+        margin-left: 0;
+    }
+}
+
+/* Utility to stop background scroll when modals are open */
+body.no-scroll {
+    overflow: hidden;
 }

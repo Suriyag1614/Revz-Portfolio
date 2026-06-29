@@ -47,64 +47,96 @@ tabs.forEach(tab => {
 
 /*===== LOAD CUSTOM PROJECTS FROM SUPABASE =====*/
 async function loadCustomProjects() {
-    // Clear old custom cards first to prevent duplication on re-render
+    const isHomePage = document.getElementById('web-projects-container') !== null;
+    const isProjectsPage = document.querySelector('.work__filters') !== null;
+    
     document.querySelectorAll('.custom-project-card').forEach(card => card.remove());
 
-    const container = document.querySelector('.work__container');
-    if (!container) return;
-
-    // Add loading spinner
-    const loaderId = 'projects-loader';
-    const loaderHTML = `<div id="${loaderId}" style="width: 100%; text-align: center; padding: 2rem; color: var(--text-color-light); grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;"><i class="uil uil-spinner-alt uil-spin" style="font-size: 2rem; display: inline-block; animation: spin 1s linear infinite;"></i><p>Loading projects...</p></div>
-    <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>`;
-    container.insertAdjacentHTML('beforeend', loaderHTML);
-
     try {
-        const { data: customProjects, error } = await supabaseClient.from('projects').select('*');
+        // We order by id descending to get the newest projects first
+        const { data: customProjects, error } = await supabaseClient.from('projects').select('*').order('id', { ascending: false });
         if (error) throw error;
 
-        // Remove loader
-        const loader = document.getElementById(loaderId);
-        if (loader) loader.remove();
-
         if (customProjects) {
-            customProjects.forEach(project => {
-                const projectCard = `
-                    <div class="work__card mix ${project.category} custom-project-card" data-id="${project.id}">
-                        <img src="${project.image}" alt="${project.name}" class="work__img">
-                        <h3 class="work__title">${project.name}</h3>
-                        <span class="work__button">Demo
-                            <i class="uil uil-arrow-right work__button-icon"></i>
-                        </span>
-                        <div class="portfolio__item-details" style="display: none;">
-                            <h3 class="details__title">${project.name}</h3>
-                            <p class="detail__description">${project.description}</p>
-                            ${project.link ? `
-                            <ul class="detail__info">
-                                <li>Link - <span><a href="${project.link}" target="_blank">${project.link}</a></span></li>
-                            </ul>
-                            ` : ''}
-                        </div>
-                    </div>
-                `;
-                container.insertAdjacentHTML('beforeend', projectCard);
-            });
+            if (isHomePage) {
+                const webContainer = document.getElementById('web-projects-container');
+                const designContainer = document.getElementById('design-projects-container');
+                
+                if(webContainer) webContainer.innerHTML = '';
+                if(designContainer) designContainer.innerHTML = '';
+
+                let webCount = 0;
+                let designCount = 0;
+
+                customProjects.forEach(project => {
+                    const projectCard = generateProjectCard(project);
+                    
+                    const catString = (project.category || '').toLowerCase();
+                    const isWeb = catString.includes('web');
+                    const isDesign = catString.includes('design') || catString.includes('graphic');
+
+                    if (isWeb && webCount < 6 && webContainer) {
+                        webContainer.insertAdjacentHTML('beforeend', projectCard);
+                        webCount++;
+                    } else if (isDesign && designCount < 6 && designContainer) {
+                        designContainer.insertAdjacentHTML('beforeend', projectCard);
+                        designCount++;
+                    }
+                });
+            } else if (isProjectsPage) {
+                const container = document.querySelector('.work__container');
+                if (container) {
+                    container.innerHTML = ''; 
+                    customProjects.forEach(project => {
+                        const projectCard = generateProjectCard(project);
+                        container.insertAdjacentHTML('beforeend', projectCard);
+                    });
+
+                    /*=============== MIXITUP FILTER PORTFOLIO ===============*/
+                    if (typeof mixitup !== 'undefined') {
+                        if (window.mixerPortfolio) {
+                            window.mixerPortfolio.destroy();
+                        }
+                        window.mixerPortfolio = mixitup('.work__container', {
+                            selectors: { target: '.work__card' },
+                            animation: { duration: 300 }
+                        });
+                    }
+                }
+            }
         }
     } catch (err) {
         console.error("Error loading projects from Supabase:", err);
-        const loader = document.getElementById(loaderId);
-        if (loader) loader.innerHTML = `<p style="color: #ff5e5e;">Failed to load projects.</p>`;
+    }
+}
+
+function generateProjectCard(project) {
+    let catClass = 'web';
+    const catStr = (project.category || '').toLowerCase();
+    if(catStr.includes('design') || catStr.includes('graphic')) {
+        catClass = 'design';
     }
 
-    /*=============== MIXITUP FILTER PORTFOLIO ===============*/
-    let mixerPortfolio = mixitup('.work__container', {
-        selectors: {
-            target: '.work__card'
-        },
-        animation: {
-            duration: 300
-        }
-    });
+    // Include the category in the details so the modal can read it
+    return `
+        <div class="work__card mix ${catClass} custom-project-card" data-id="${project.id}">
+            <img src="${project.image}" alt="${project.name}" class="work__img">
+            <h3 class="work__title">${project.name}</h3>
+            <span class="work__button">View Project
+                <i class="uil uil-arrow-right work__button-icon"></i>
+            </span>
+            <div class="portfolio__item-details" style="display: none;">
+                <h3 class="details__title">${project.name}</h3>
+                <p class="detail__description">${project.description || ''}</p>
+                <div class="detail__category" style="display:none;">${project.category || ''}</div>
+                ${project.link ? `
+                <ul class="detail__info">
+                    <li>Link - <span><a href="${project.link}" target="_blank">${project.link}</a></span></li>
+                </ul>
+                ` : ''}
+            </div>
+        </div>
+    `;
 }
 
 // Load dynamic custom projects and initialize MixItUp
@@ -121,20 +153,27 @@ linkWork.forEach(x => x.addEventListener("click", activeWork))
 
 /*===== Work Popup =====*/
 document.addEventListener("click", (e) => {
-    if (e.target.classList.contains("work__button")) {
+    const card = e.target.closest('.work__card');
+    if (card) {
         togglePortfolioPopup();
-        portfolioItemDetails(e.target.parentElement);
+        portfolioItemDetails(card);
     }
 })
 
 function togglePortfolioPopup() {
     document.querySelector(".portfolio__popup").classList.toggle("open");
+    document.body.classList.toggle("no-scroll");
 }
-document.querySelector('.portfolio__popup-close').addEventListener("click", togglePortfolioPopup);
+const portfolioPopupClose = document.querySelector('.portfolio__popup-close');
+if(portfolioPopupClose) {
+    portfolioPopupClose.addEventListener("click", togglePortfolioPopup);
+}
 
 function portfolioItemDetails(portfolioItem) {
     document.querySelector(".pp__thumbnail img").src = portfolioItem.querySelector(".work__img").src;
-    document.querySelector(".portfolio__popup-subtitle span").innerHTML = portfolioItem.querySelector(".work__title").innerHTML;
+    const catElement = portfolioItem.querySelector(".detail__category");
+    const categoryText = catElement ? catElement.textContent : 'Project';
+    document.querySelector(".portfolio__popup-subtitle span").innerHTML = categoryText;
     document.querySelector(".portfolio__popup-body").innerHTML = portfolioItem.querySelector(".portfolio__item-details").innerHTML;
 }
 
@@ -146,6 +185,7 @@ const modalViews = document.querySelectorAll(".services__modal"),
 /*  modal függvény létrehozása */
 let modal = function (modalClick) {
     modalViews[modalClick].classList.add("active-modal");
+    document.body.classList.add("no-scroll");
 
     modalViews[modalClick].addEventListener("click", function (e) {
         if (e.target === this) {
@@ -157,6 +197,7 @@ let modal = function (modalClick) {
 /* a closeModal függvény létrehozása */
 let closeModal = function (modalClick) {
     modalViews[modalClick].classList.remove("active-modal");
+    document.body.classList.remove("no-scroll");
 }
 
 modalBtns.forEach((modalBtn, i) => {
@@ -179,6 +220,10 @@ let swiper = new Swiper(".testimonials__container", {
     pagination: {
         el: ".swiper-pagination",
         clickable: true,
+    },
+    navigation: {
+        nextEl: ".swiper-button-next",
+        prevEl: ".swiper-button-prev",
     },
     breakpoints: {
         567: {
@@ -224,7 +269,13 @@ function navHighlighter() {
         const sectionTop = current.offsetTop - 30,
             sectionId = current.getAttribute('id');
 
-        const link = document.querySelector('.nav__menu a[href*=' + sectionId + ']');
+        let link = document.querySelector('.nav__menu a[href*=' + sectionId + ']');
+        
+        // Special case for the Work (Projects) section, since its href is 'projects.html'
+        if (!link && sectionId === 'work') {
+            link = document.querySelector('.nav__menu a[href*="projects.html"]');
+        }
+
         if (link) {
             if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
                 link.classList.add('active-link');
@@ -390,5 +441,27 @@ function populateProjectsCarousel() {
         });
     }
 }
+
+/*=============== WEB SHARE API ===============*/
+const shareBtns = document.querySelectorAll('.btn__share');
+shareBtns.forEach(btn => {
+    btn.addEventListener('click', async () => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Revan Portfolio',
+                    text: 'Check out this awesome portfolio by Frontend Developer & UI/UX Designer, Revan Josh!',
+                    url: window.location.href
+                });
+            } catch (err) {
+                console.log('Error sharing:', err);
+            }
+        } else {
+            // Fallback for browsers that don't support Web Share API
+            navigator.clipboard.writeText(window.location.href);
+            alert('Portfolio link copied to clipboard!');
+        }
+    });
+});
 
 

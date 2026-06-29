@@ -118,9 +118,11 @@ if (projDesign && linkFieldContainer) {
     projDesign.addEventListener('change', () => {
         if (projDesign.value === 'web' || projDesign.value === 'app') {
             linkFieldContainer.classList.remove('admin__view-hidden');
+            if (projImage) projImage.required = false;
         } else {
             linkFieldContainer.classList.add('admin__view-hidden');
             if (projLink) projLink.value = '';
+            if (projImage) projImage.required = true;
         }
     });
 }
@@ -191,7 +193,7 @@ function resetProjectForm() {
     
     editingProjectId = null;
     currentProjectOldImage = null;
-    if (projImage) projImage.required = true;
+    if (projImage) projImage.required = false;
 
     const formTitle = document.querySelector('#adminFormView .admin__box-title');
     if (formTitle) formTitle.innerText = "Add New Project";
@@ -214,14 +216,26 @@ if (addProjectForm) {
         const description = document.getElementById('projDesc').value.trim();
         const link = (category === 'web' || category === 'app') ? document.getElementById('projLink').value.trim() : '';
 
-        if (!selectedImageFile && !base64ImageString) {
-            alert("Please upload a project image!");
+        // Validation: Graphic Design always requires an image. Web/App can use screenshot fallback.
+        if (category === 'design' && !selectedImageFile && !base64ImageString && !currentProjectOldImage) {
+            alert("Please upload a project image for Graphic Design projects!");
             submitBtn.disabled = false;
             submitBtn.innerHTML = editingProjectId ? 'Save Changes' : 'Add Project';
             return;
         }
 
-        let imageUrl = base64ImageString; // defaults to old url if editing and not changing image
+        let imageUrl = base64ImageString || currentProjectOldImage; 
+
+        // Generate automatic screenshot for Web/App if no image was provided
+        if (!selectedImageFile && !base64ImageString && !currentProjectOldImage && (category === 'web' || category === 'app')) {
+            if (link) {
+                // Use Automattic's mshots to generate a live screenshot of the URL (completely free, no API key needed)
+                imageUrl = `https://s0.wp.com/mshots/v1/${encodeURIComponent(link)}?w=1200`;
+            } else {
+                // Fallback image if no link and no image is uploaded
+                imageUrl = 'assets/img/work-1.webp'; 
+            }
+        }
 
         try {
             // Upload new image to Supabase Storage if one was selected
