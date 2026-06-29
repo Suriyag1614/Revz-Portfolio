@@ -87,10 +87,28 @@ async function loadCustomProjects() {
                 const container = document.querySelector('.work__container');
                 if (container) {
                     container.innerHTML = ''; 
+                    
+                    const designProjects = [];
+                    const webProjects = [];
+                    
                     customProjects.forEach(project => {
-                        const projectCard = generateProjectCard(project);
-                        container.insertAdjacentHTML('beforeend', projectCard);
+                        const catStr = (project.category || '').toLowerCase();
+                        if (catStr.includes('design') || catStr.includes('graphic')) {
+                            designProjects.push(project);
+                        } else {
+                            webProjects.push(project);
+                        }
                     });
+                    
+                    if (designProjects.length > 0) {
+                        container.insertAdjacentHTML('beforeend', `<h3 class="mix design category-heading" style="grid-column: 1 / -1; margin-top: 1rem; font-size: var(--h3-font-size); color: var(--title-color); border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; width: 100%;">Graphic Design</h3>`);
+                        designProjects.forEach(p => container.insertAdjacentHTML('beforeend', generateProjectCard(p)));
+                    }
+                    
+                    if (webProjects.length > 0) {
+                        container.insertAdjacentHTML('beforeend', `<h3 class="mix web category-heading" style="grid-column: 1 / -1; margin-top: 1rem; font-size: var(--h3-font-size); color: var(--title-color); border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; width: 100%;">Web Development</h3>`);
+                        webProjects.forEach(p => container.insertAdjacentHTML('beforeend', generateProjectCard(p)));
+                    }
 
                     /*=============== MIXITUP FILTER PORTFOLIO ===============*/
                     if (typeof mixitup !== 'undefined') {
@@ -98,7 +116,7 @@ async function loadCustomProjects() {
                             window.mixerPortfolio.destroy();
                         }
                         window.mixerPortfolio = mixitup('.work__container', {
-                            selectors: { target: '.work__card' },
+                            selectors: { target: '.mix' },
                             animation: { duration: 300 }
                         });
                     }
@@ -397,7 +415,7 @@ function populateProjectsCarousel() {
             <div class="swiper-slide">
                 <div class="work__card" style="height: 100%; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(255, 255, 255, 0.05); padding: 1.5rem; border-radius: 0.75rem; background-color: rgba(255, 255, 255, 0.01);">
                     <div>
-                        <img src="${img}" alt="${title}" class="work__img" style="border-radius: 0.5rem; margin-bottom: 1rem; width: 100%; height: 180px; object-fit: cover;">
+                        <img src="${img}" alt="${title}" class="work__img" style="border-radius: 0.5rem; margin-bottom: 1rem; width: 100%; height: 180px; object-fit: contain; background-color: rgba(255, 255, 255, 0.02);">
                         <h3 class="work__title" style="font-size: var(--normal-font-size); margin-bottom: 0.5rem; text-align: left;">${title}</h3>
                         <p style="font-size: var(--smaller-font-size); color: var(--text-color); margin-bottom: 1rem; line-height: 1.5; text-align: left; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">${desc}</p>
                     </div>

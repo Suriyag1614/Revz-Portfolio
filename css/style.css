@@ -664,6 +664,7 @@ section {
     gap: 1.8rem;
     justify-content: center;
     padding-top: 1rem;
+    align-items: start;
 }
 
 .work__filters {
@@ -698,6 +699,7 @@ section {
 .work__img {
     border-radius: .5rem;
     margin-bottom: var(--mb-1);
+    width: 100%;
 }
 
 .work__title {
