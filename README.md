@@ -1,7 +1,5 @@
 # Revan Josh - Professional Portfolio
 
-![Portfolio Preview](./assets/img/tracking.png)
-
 A modern, highly responsive, and dynamic personal portfolio built for showcasing Web Development, UI/UX Design, and Graphic Design projects. This portfolio doesn't just look premium on the frontend—it is powered by a custom **Supabase Backend** that dynamically serves project data, allowing seamless updates via a private Admin Dashboard.
 
 ## 🚀 Live Demo
