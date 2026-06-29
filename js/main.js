@@ -45,51 +45,57 @@ tabs.forEach(tab => {
     })
 })
 
-/*===== LOAD CUSTOM PROJECTS FROM LOCALSTORAGE =====*/
-function loadCustomProjects() {
+/*===== LOAD CUSTOM PROJECTS FROM SUPABASE =====*/
+async function loadCustomProjects() {
     // Clear old custom cards first to prevent duplication on re-render
     document.querySelectorAll('.custom-project-card').forEach(card => card.remove());
 
-    const customProjects = JSON.parse(localStorage.getItem('portfolio_projects')) || [];
-    const container = document.querySelector('.work__container');
+    try {
+        const { data: customProjects, error } = await supabaseClient.from('projects').select('*');
+        if (error) throw error;
 
-    if (container) {
-        customProjects.forEach(project => {
-            const projectCard = `
-                <div class="work__card mix ${project.category} custom-project-card" data-id="${project.id}">
-                    <img src="${project.image}" alt="${project.name}" class="work__img">
-                    <h3 class="work__title">${project.name}</h3>
-                    <span class="work__button">Demo
-                        <i class="uil uil-arrow-right work__button-icon"></i>
-                    </span>
-                    <div class="portfolio__item-details" style="display: none;">
-                        <h3 class="details__title">${project.name}</h3>
-                        <p class="detail__description">${project.description}</p>
-                        ${project.link ? `
-                        <ul class="detail__info">
-                            <li>Link - <span><a href="${project.link}" target="_blank">${project.link}</a></span></li>
-                        </ul>
-                        ` : ''}
+        const container = document.querySelector('.work__container');
+
+        if (container && customProjects) {
+            customProjects.forEach(project => {
+                const projectCard = `
+                    <div class="work__card mix ${project.category} custom-project-card" data-id="${project.id}">
+                        <img src="${project.image}" alt="${project.name}" class="work__img">
+                        <h3 class="work__title">${project.name}</h3>
+                        <span class="work__button">Demo
+                            <i class="uil uil-arrow-right work__button-icon"></i>
+                        </span>
+                        <div class="portfolio__item-details" style="display: none;">
+                            <h3 class="details__title">${project.name}</h3>
+                            <p class="detail__description">${project.description}</p>
+                            ${project.link ? `
+                            <ul class="detail__info">
+                                <li>Link - <span><a href="${project.link}" target="_blank">${project.link}</a></span></li>
+                            </ul>
+                            ` : ''}
+                        </div>
                     </div>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', projectCard);
-        });
+                `;
+                container.insertAdjacentHTML('beforeend', projectCard);
+            });
+        }
+    } catch (err) {
+        console.error("Error loading projects from Supabase:", err);
     }
+
+    /*=============== MIXITUP FILTER PORTFOLIO ===============*/
+    let mixerPortfolio = mixitup('.work__container', {
+        selectors: {
+            target: '.work__card'
+        },
+        animation: {
+            duration: 300
+        }
+    });
 }
 
-// Load dynamic custom projects before initializing MixItUp
+// Load dynamic custom projects and initialize MixItUp
 loadCustomProjects();
-
-/*=============== MIXITUP FILTER PORTFOLIO ===============*/
-let mixerPortfolio = mixitup('.work__container', {
-    selectors: {
-        target: '.work__card'
-    },
-    animation: {
-        duration: 300
-    }
-});
 
 /*===== Link Active Work =====*/
 const linkWork = document.querySelectorAll('.work__item');
@@ -205,10 +211,13 @@ function navHighlighter() {
         const sectionTop = current.offsetTop - 30,
             sectionId = current.getAttribute('id');
 
-        if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
-            document.querySelector('.nav__menu a[href*=' + sectionId + ']').classList.add('active-link');
-        } else {
-            document.querySelector('.nav__menu a[href*=' + sectionId + ']').classList.remove('active-link');
+        const link = document.querySelector('.nav__menu a[href*=' + sectionId + ']');
+        if (link) {
+            if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
+                link.classList.add('active-link');
+            } else {
+                link.classList.remove('active-link');
+            }
         }
     })
 }
@@ -251,345 +260,6 @@ if (contactForm) {
     });
 }
 
-/*=============== ADMIN PANEL MODAL & ADD PROJECTS LOGIC ===============*/
-const adminModal = document.getElementById('adminModal'),
-    adminDashboardBtn = document.getElementById('adminDashboardBtn'),
-    closeAdminModal = document.getElementById('closeAdminModal'),
-    addProjectTrigger = document.getElementById('addProjectTrigger'),
-    btnBackToAdmin = document.getElementById('btnBackToAdmin'),
-    adminMainView = document.getElementById('adminMainView'),
-    adminFormView = document.getElementById('adminFormView'),
-    addProjectForm = document.getElementById('addProjectForm'),
-    projImage = document.getElementById('projImage'),
-    imageDropzone = document.getElementById('imageDropzone'),
-    imagePreview = document.getElementById('imagePreview'),
-    imagePreviewContainer = document.getElementById('imagePreviewContainer'),
-    removePreviewBtn = document.getElementById('removePreviewBtn'),
-    adminToast = document.getElementById('adminToast'),
-    projDesign = document.getElementById('projDesign'),
-    linkFieldContainer = document.getElementById('linkFieldContainer'),
-    projLink = document.getElementById('projLink');
-
-let base64ImageString = ""; // Stores base64 data URL representation of project image
-let editingProjectId = null; // Tracks custom project currently being edited
-
-// Open Admin Modal & Render the Project List
-if (adminDashboardBtn) {
-    adminDashboardBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        adminModal.classList.add('active-modal');
-        renderAdminProjects();
-    });
-}
-
-// Close Admin Modal
-if (closeAdminModal) {
-    closeAdminModal.addEventListener('click', () => {
-        closeAdminPanel();
-    });
-}
-
-if (adminModal) {
-    adminModal.addEventListener('click', function (e) {
-        if (e.target === this) {
-            closeAdminPanel();
-        }
-    });
-}
-
-function closeAdminPanel() {
-    adminModal.classList.remove('active-modal');
-    // Reset to main dashboard option panel with transition delay
-    setTimeout(() => {
-        adminMainView.classList.remove('admin__view-hidden');
-        adminFormView.classList.add('admin__view-hidden');
-        resetProjectForm();
-    }, 400);
-}
-
-// Switch view from dashboard select card to Add Project Form
-if (addProjectTrigger) {
-    addProjectTrigger.addEventListener('click', () => {
-        adminMainView.classList.add('admin__view-hidden');
-        adminFormView.classList.remove('admin__view-hidden');
-    });
-}
-
-if (btnBackToAdmin) {
-    btnBackToAdmin.addEventListener('click', () => {
-        adminMainView.classList.remove('admin__view-hidden');
-        adminFormView.classList.add('admin__view-hidden');
-        resetProjectForm();
-    });
-}
-
-// Category change listener to toggle Project Link field
-if (projDesign && linkFieldContainer) {
-    projDesign.addEventListener('change', () => {
-        if (projDesign.value === 'web' || projDesign.value === 'app') {
-            linkFieldContainer.classList.remove('admin__view-hidden');
-        } else {
-            linkFieldContainer.classList.add('admin__view-hidden');
-            if (projLink) projLink.value = '';
-        }
-    });
-}
-
-// Drag & Drop File upload
-if (projImage) {
-    projImage.addEventListener('change', function (e) {
-        const file = e.target.files[0];
-        handleImageFile(file);
-    });
-}
-
-if (imageDropzone) {
-    ['dragenter', 'dragover'].forEach(eventName => {
-        imageDropzone.addEventListener(eventName, (e) => {
-            e.preventDefault();
-            imageDropzone.classList.add('dragover');
-        }, false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-        imageDropzone.addEventListener(eventName, (e) => {
-            e.preventDefault();
-            imageDropzone.classList.remove('dragover');
-        }, false);
-    });
-
-    imageDropzone.addEventListener('drop', (e) => {
-        const dt = e.dataTransfer;
-        const file = dt.files[0];
-        handleImageFile(file);
-    });
-}
-
-function handleImageFile(file) {
-    if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onloadend = function () {
-            base64ImageString = reader.result;
-            imagePreview.src = base64ImageString;
-            imagePreviewContainer.classList.remove('admin__preview-hidden');
-        }
-    }
-}
-
-if (removePreviewBtn) {
-    removePreviewBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Avoid opening browse dialog
-        e.preventDefault();
-        projImage.value = "";
-        base64ImageString = "";
-        imagePreview.src = "";
-        imagePreviewContainer.classList.add('admin__preview-hidden');
-    });
-}
-
-function resetProjectForm() {
-    addProjectForm.reset();
-    projImage.value = "";
-    base64ImageString = "";
-    imagePreview.src = "";
-    imagePreviewContainer.classList.add('admin__preview-hidden');
-    if (linkFieldContainer) linkFieldContainer.classList.add('admin__view-hidden');
-    
-    // Reset edit state variables
-    editingProjectId = null;
-    if (projImage) projImage.required = true;
-
-    // Reset heading & submit buttons
-    const formTitle = document.querySelector('#adminFormView .admin__box-title');
-    if (formTitle) formTitle.innerText = "Add New Project";
-
-    const submitBtn = document.querySelector('#addProjectForm button[type="submit"]');
-    if (submitBtn) submitBtn.innerHTML = '<i class="uil uil-plus button__icon"></i> Add Project';
-}
-
-// Admin Form Submission Setup
-if (addProjectForm) {
-    addProjectForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-
-        const name = document.getElementById('projName').value.trim();
-        const category = document.getElementById('projDesign').value;
-        const description = document.getElementById('projDesc').value.trim();
-        const link = (category === 'web' || category === 'app') ? document.getElementById('projLink').value.trim() : '';
-
-        if (!base64ImageString) {
-            alert("Please upload a project image!");
-            return;
-        }
-
-        let customProjects = JSON.parse(localStorage.getItem('portfolio_projects')) || [];
-
-        if (editingProjectId !== null) {
-            // Update existing project
-            customProjects = customProjects.map(project => {
-                if (project.id === editingProjectId) {
-                    return {
-                        ...project,
-                        name: name,
-                        category: category,
-                        image: base64ImageString,
-                        description: description,
-                        link: link
-                    };
-                }
-                return project;
-            });
-            localStorage.setItem('portfolio_projects', JSON.stringify(customProjects));
-            document.querySelector('.admin__toast-msg').innerText = "Project updated successfully!";
-        } else {
-            // Create new project details
-            const newProject = {
-                id: Date.now(),
-                name: name,
-                category: category,
-                image: base64ImageString,
-                description: description,
-                link: link
-            };
-            customProjects.push(newProject);
-            localStorage.setItem('portfolio_projects', JSON.stringify(customProjects));
-            document.querySelector('.admin__toast-msg').innerText = "Project added successfully!";
-        }
-
-        // Refresh dynamic UI elements
-        loadCustomProjects();
-        refreshMixer();
-        renderAdminProjects();
-
-        // Show Success Toast
-        showSuccessToast();
-
-        // Close and clean
-        closeAdminPanel();
-    });
-}
-
-function showSuccessToast() {
-    adminToast.classList.add('toast-active');
-    setTimeout(() => {
-        adminToast.classList.remove('toast-active');
-    }, 3000);
-}
-
-// Re-index MixItUp dynamically
-function refreshMixer() {
-    if (typeof mixerPortfolio !== 'undefined' && mixerPortfolio) {
-        mixerPortfolio.destroy();
-    }
-
-    mixerPortfolio = mixitup('.work__container', {
-        selectors: {
-            target: '.work__card'
-        },
-        animation: {
-            duration: 300
-        }
-    });
-}
-
-// Render dynamic custom project list in the Admin panel main view
-function renderAdminProjects() {
-    const adminProjectsList = document.getElementById('adminProjectsList');
-    if (!adminProjectsList) return;
-
-    const customProjects = JSON.parse(localStorage.getItem('portfolio_projects')) || [];
-
-    if (customProjects.length === 0) {
-        adminProjectsList.innerHTML = `<div class="admin__no-projects">No custom projects added yet.</div>`;
-        return;
-    }
-
-    adminProjectsList.innerHTML = customProjects.map(project => `
-        <div class="admin__project-item">
-            <div class="admin__project-info">
-                <img src="${project.image}" alt="${project.name}" class="admin__project-thumb">
-                <div class="admin__project-meta">
-                    <span class="admin__project-name">${project.name}</span>
-                    <span class="admin__project-category">${project.category}</span>
-                </div>
-            </div>
-            <div class="admin__project-actions">
-                <button type="button" class="admin__action-btn admin__action-btn-edit" onclick="editProject(${project.id})">
-                    <i class="uil uil-pen"></i>
-                </button>
-                <button type="button" class="admin__action-btn admin__action-btn-delete" onclick="deleteProject(${project.id})">
-                    <i class="uil uil-trash-alt"></i>
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Edit custom project action
-function editProject(id) {
-    const customProjects = JSON.parse(localStorage.getItem('portfolio_projects')) || [];
-    const project = customProjects.find(p => p.id === id);
-    if (!project) return;
-
-    // Set edit mode states
-    editingProjectId = id;
-
-    // Populate inputs
-    document.getElementById('projName').value = project.name;
-    document.getElementById('projDesign').value = project.category;
-    document.getElementById('projDesc').value = project.description;
-
-    // Toggle link field visibility
-    if (project.category === 'web' || project.category === 'app') {
-        if (linkFieldContainer) linkFieldContainer.classList.remove('admin__view-hidden');
-        if (projLink) projLink.value = project.link || '';
-    } else {
-        if (linkFieldContainer) linkFieldContainer.classList.add('admin__view-hidden');
-        if (projLink) projLink.value = '';
-    }
-
-    // Populate Preview Image
-    base64ImageString = project.image;
-    imagePreview.src = project.image;
-    imagePreviewContainer.classList.remove('admin__preview-hidden');
-
-    // Make file input optional since we already have an image
-    if (projImage) projImage.required = false;
-
-    // Modify Form UI Headings/Buttons
-    const formTitle = document.querySelector('#adminFormView .admin__box-title');
-    if (formTitle) formTitle.innerText = "Edit Project";
-
-    const submitBtn = document.querySelector('#addProjectForm button[type="submit"]');
-    if (submitBtn) submitBtn.innerHTML = '<i class="uil uil-save button__icon"></i> Save Changes';
-
-    // Transition views inside modal
-    adminMainView.classList.add('admin__view-hidden');
-    adminFormView.classList.remove('admin__view-hidden');
-}
-
-// Delete custom project action
-function deleteProject(id) {
-    if (confirm("Are you sure you want to delete this project?")) {
-        let customProjects = JSON.parse(localStorage.getItem('portfolio_projects')) || [];
-        customProjects = customProjects.filter(p => p.id !== id);
-        localStorage.setItem('portfolio_projects', JSON.stringify(customProjects));
-
-        // Reload views
-        loadCustomProjects();
-        refreshMixer();
-        renderAdminProjects();
-
-        // Show Toast
-        document.querySelector('.admin__toast-msg').innerText = "Project removed successfully!";
-        showSuccessToast();
-    }
-}
-
-// Expose actions to global window context so inline click event listeners can access them
-window.editProject = editProject;
-window.deleteProject = deleteProject;
 
 /*=============== PROJECTS CAROUSEL MODAL LOGIC ===============*/
 const projectsModal = document.getElementById('projectsModal'),
@@ -707,3 +377,5 @@ function populateProjectsCarousel() {
         });
     }
 }
+
+
