@@ -50,13 +50,24 @@ async function loadCustomProjects() {
     // Clear old custom cards first to prevent duplication on re-render
     document.querySelectorAll('.custom-project-card').forEach(card => card.remove());
 
+    const container = document.querySelector('.work__container');
+    if (!container) return;
+
+    // Add loading spinner
+    const loaderId = 'projects-loader';
+    const loaderHTML = `<div id="${loaderId}" style="width: 100%; text-align: center; padding: 2rem; color: var(--text-color-light); grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;"><i class="uil uil-spinner-alt uil-spin" style="font-size: 2rem; display: inline-block; animation: spin 1s linear infinite;"></i><p>Loading projects...</p></div>
+    <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>`;
+    container.insertAdjacentHTML('beforeend', loaderHTML);
+
     try {
         const { data: customProjects, error } = await supabaseClient.from('projects').select('*');
         if (error) throw error;
 
-        const container = document.querySelector('.work__container');
+        // Remove loader
+        const loader = document.getElementById(loaderId);
+        if (loader) loader.remove();
 
-        if (container && customProjects) {
+        if (customProjects) {
             customProjects.forEach(project => {
                 const projectCard = `
                     <div class="work__card mix ${project.category} custom-project-card" data-id="${project.id}">
@@ -81,6 +92,8 @@ async function loadCustomProjects() {
         }
     } catch (err) {
         console.error("Error loading projects from Supabase:", err);
+        const loader = document.getElementById(loaderId);
+        if (loader) loader.innerHTML = `<p style="color: #ff5e5e;">Failed to load projects.</p>`;
     }
 
     /*=============== MIXITUP FILTER PORTFOLIO ===============*/
